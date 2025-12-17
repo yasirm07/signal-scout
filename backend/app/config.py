@@ -1,6 +1,7 @@
 import os
 from functools import lru_cache
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -12,9 +13,10 @@ class Settings(BaseSettings):
     firecrawl_base_url: str = Field(default="https://api.firecrawl.dev/v1/crawl", env="FIRECRAWL_BASE_URL")
     app_name: str = Field(default="AI Business Presence Auditor")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False
+    )
 
 
 @lru_cache()
