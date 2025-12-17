@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signal Scout | AI Presence Auditor</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <div class="min-h-screen max-w-5xl mx-auto px-4 py-10">
+      <header class="mb-10">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-indigo-600 uppercase tracking-wide">Signal Scout</p>
+            <h1 class="text-3xl font-bold">AI Business Presence Auditor</h1>
+            <p class="text-gray-600 mt-2">
+              Find and fix the online signals that cost you customers.
+            </p>
+          </div>
+          <div class="text-right text-sm text-gray-500">
+            <p>Score + top fixes in under a minute.</p>
+            <p>No login required.</p>
+          </div>
+        </div>
+      </header>
+
+      <main class="grid gap-6 lg:grid-cols-3">
+        <section class="lg:col-span-1">
+          <div class="bg-white shadow-sm rounded-lg p-5">
+            <h2 class="text-xl font-semibold mb-3">Analyze my business</h2>
+            <form id="analyze-form" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium">Business name *</label>
+                <input
+                  id="business_name"
+                  required
+                  class="mt-1 w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Acme Plumbing"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium">City / Location *</label>
+                <input
+                  id="city"
+                  required
+                  class="mt-1 w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Austin, TX"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium">Website (optional)</label>
+                <input
+                  id="website"
+                  class="mt-1 w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="https://example.com"
+                />
+              </div>
+              <button
+                type="submit"
+                class="w-full bg-indigo-600 text-white rounded-md py-2 font-semibold hover:bg-indigo-700 transition"
+              >
+                Analyze my business
+              </button>
+              <p id="status" class="text-sm text-gray-600"></p>
+            </form>
+          </div>
+        </section>
+
+        <section class="lg:col-span-2">
+          <div class="bg-white shadow-sm rounded-lg p-5 space-y-4" id="results">
+            <p class="text-gray-500">Run an analysis to see results.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const form = document.getElementById("analyze-form");
+      const statusEl = document.getElementById("status");
+      const results = document.getElementById("results");
+
+      // Change this to your deployed backend URL when you go live
+      // For local testing: "http://localhost:8000"
+      // For production: "https://your-backend-url.onrender.com"
+      const API_URL = "http://localhost:8000";
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        statusEl.textContent = "Working... this can take 30-60 seconds.";
+        results.innerHTML = "";
+
+        const payload = {
+          business_name: document.getElementById("business_name").value,
+          city: document.getElementById("city").value,
+          website: document.getElementById("website").value || null,
+        };
+
+        try {
+          const res = await fetch(`${API_URL}/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error("Request failed");
+          const data = await res.json();
+          statusEl.textContent = "Done.";
+          renderResults(data);
+        } catch (err) {
+          console.error(err);
+          statusEl.textContent = "Something went wrong. Check the backend logs.";
+        }
+      });
+
+      function renderResults(data) {
+        const score = `
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm uppercase tracking-wide text-gray-500">Business Health Score</p>
+              <p class="text-4xl font-bold text-indigo-700">${data.business_health_score}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-sm text-gray-700">
+              <div><span class="font-semibold">Listings:</span> ${data.sub_scores.listings_accuracy}</div>
+              <div><span class="font-semibold">Reputation:</span> ${data.sub_scores.reputation}</div>
+              <div><span class="font-semibold">Presence:</span> ${data.sub_scores.online_presence}</div>
+              <div><span class="font-semibold">Trust:</span> ${data.sub_scores.trust_signals}</div>
+            </div>
+          </div>
+        `;
+
+        const listing = data.listing;
+        const listingHtml = `
+          <div class="mt-4">
+            <p class="text-sm uppercase tracking-wide text-gray-500">Detected listing</p>
+            <p class="font-semibold">${listing.name} <span class="text-xs text-gray-500">(${Math.round(
+              listing.confidence * 100
+            )}% confidence)</span></p>
+            <p class="text-gray-700">${listing.address || "Address not found"}</p>
+            <p class="text-gray-700">${listing.phone || "Phone not found"}</p>
+            <p class="text-gray-700">${listing.hours || "Hours not found"}</p>
+          </div>
+        `;
+
+        const fixes = (data.top_fixes || [])
+          .map(
+            (fix) => `
+          <div class="border rounded-md p-3">
+            <p class="font-semibold">${fix.title}</p>
+            <p class="text-gray-700 text-sm">${fix.what}</p>
+            <p class="text-gray-600 text-xs mt-1">Why: ${fix.why}</p>
+            <p class="text-indigo-600 text-xs mt-1 uppercase">Impact: ${fix.impact}</p>
+            <ul class="text-xs text-gray-500 list-disc ml-4 mt-1">
+              ${fix.evidence.map((e) => `<li>${e.source}: ${e.detail}</li>`).join("")}
+            </ul>
+          </div>
+        `
+          )
+          .join("");
+
+        const evidence = (data.evidence || [])
+          .map((e) => `<li><span class="font-semibold">${e.source}</span>: ${e.detail}</li>`)
+          .join("");
+
+        results.innerHTML = `
+          ${score}
+          ${listingHtml}
+          <div class="mt-6">
+            <p class="text-lg font-semibold mb-2">Top fixes</p>
+            <div class="space-y-3">${fixes || "<p class='text-gray-500'>No recommendations.</p>"}</div>
+          </div>
+          <div class="mt-6">
+            <p class="text-lg font-semibold mb-2">Evidence</p>
+            <ul class="text-sm text-gray-700 space-y-1">${evidence || "<p class='text-gray-500'>No evidence captured.</p>"}</ul>
+          </div>
+        `;
+      }
+    </script>
+  </body>
+</html>
+
